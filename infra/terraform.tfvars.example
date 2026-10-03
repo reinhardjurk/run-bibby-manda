@@ -1,0 +1,6 @@
+# Copy to <env>.auto.tfvars locally (git-ignored). Secrets come from TF_VAR_* env vars, never here.
+environment     = "staging"
+container_image = "rg.fr-par.scw.cloud/bibby/bibby:CHANGE_ME"
+public_base_url = "https://staging.example.org"
+mail_project_id = "CHANGE_ME"
+mail_sender     = "noreply@example.org"

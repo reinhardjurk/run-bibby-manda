@@ -1,0 +1,20 @@
+# gitleaks configuration – runs in CI on every push and as a pre-commit hook.
+title = "bibby-multi-org secret scanning"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Obvious placeholders in examples and docs"
+regexes = [
+  '''CHANGE_ME''',
+  '''testpasswort''',
+  '''REPLACE_ME''',
+  '''example\.invalid''',
+  '''<[A-Z_]+>''',
+]
+paths = [
+  '''(^|/)package-lock\.json$''',
+  '''(^|/)uv\.lock$''',
+  '''\.example$''',
+]
