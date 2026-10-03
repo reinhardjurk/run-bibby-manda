@@ -41,8 +41,11 @@ GitHub-Environments `staging` und `production` mit jeweils eigenen Secrets/Varia
    tofu output -raw database_endpoint
    ```
 
-   Serverless SQL authentifiziert mit dem IAM-Key; die URL für beide DB-Secrets lautet
-   `postgresql+asyncpg://<ACCESS_KEY>:<SECRET_KEY>@<endpoint-host>:5432/bibby-production?ssl=require`.
+   `tofu output -raw database_endpoint` liefert `postgres://<host>:5432/<dbname>?sslmode=require`.
+   Serverless SQL authentifiziert mit IAM: Benutzername = **ID der IAM-Applikation bzw. des
+   IAM-Users**, dem der API-Key gehört (UUID, nicht der Access-Key), Passwort = Secret-Key.
+   Daraus wird die URL für beide DB-Secrets (asyncpg erwartet `ssl=require` statt `sslmode`):
+   `postgresql+asyncpg://<IAM-PRINCIPAL-ID>:<SECRET_KEY>@<host>:5432/<dbname>?ssl=require`.
    Eigene PostgreSQL-Rollen sind dort nicht möglich, die RLS-Policies bleiben deshalb inaktiv
    (primäre Verteidigung ist die getestete Scoping-Schicht).
 3. Environments in GitHub befüllen (Tabelle oben) und den Deploy-Workflow ausführen. Beim
