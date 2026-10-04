@@ -75,6 +75,18 @@ jobs:
         with:
           version: "0.8.17"
       - run: uv sync --frozen --no-dev
+      - name: Show connection target (password masked)
+        env:
+          BIBBY_DATABASE_URL: ${{ secrets.BIBBY_DATABASE_URL_MIGRATIONS }}
+          BIBBY_APP_SECRET: ${{ secrets.BIBBY_APP_SECRET }}
+        run: |
+          uv run python - <<'PY'
+          from sqlalchemy.engine import make_url
+          from app.config import get_settings
+          url = make_url(get_settings().database_url)
+          print("database:", url.render_as_string(hide_password=True))
+          print("query:", dict(url.query))
+          PY
       - name: alembic upgrade head
         env:
           BIBBY_DATABASE_URL: ${{ secrets.BIBBY_DATABASE_URL_MIGRATIONS }}
