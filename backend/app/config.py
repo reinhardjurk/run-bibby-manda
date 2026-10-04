@@ -7,15 +7,18 @@ from functools import lru_cache
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+SSL_MODES = ("disable", "allow", "prefer", "require", "verify-ca", "verify-full")
+
 
 def normalize_database_url(url: str) -> str:
     """Accepts the URL forms cloud consoles print and maps them to the asyncpg dialect.
 
-    * surrounding whitespace / newlines (pasted secrets) are removed
+    * surrounding whitespace, newlines and quotes (pasted secrets) are removed
     * `postgres://` and `postgresql://` → `postgresql+asyncpg://`
-    * libpq `sslmode=<mode>` → asyncpg `ssl=<mode>` (value trimmed and lower-cased)
+    * libpq `sslmode=<mode>` → asyncpg `ssl=<mode>`; the mode is cleaned and validated so a
+      broken value fails fast with a readable message instead of deep inside asyncpg
     """
-    url = url.strip()
+    url = url.strip().strip("\"'").strip()
     for prefix in ("postgres://", "postgresql://"):
         if url.startswith(prefix):
             url = "postgresql+asyncpg://" + url[len(prefix) :]
@@ -26,9 +29,15 @@ def normalize_database_url(url: str) -> str:
     params: list[str] = []
     for part in query.split("&"):
         key, sep, value = part.partition("=")
-        key, value = key.strip(), value.strip()
-        if key.lower() == "sslmode":
-            key, value = "ssl", value.lower()
+        key, value = key.strip().strip("\"'"), value.strip().strip("\"'")
+        if key.lower() in ("sslmode", "ssl"):
+            mode = "".join(ch for ch in value.lower() if ch.isalnum() or ch == "-")
+            if mode not in SSL_MODES:
+                raise ValueError(
+                    f"BIBBY_DATABASE_URL: ungültiger SSL-Modus {value!r} – erlaubt sind "
+                    f"{', '.join(SSL_MODES)} (z. B. ?ssl=require)"
+                )
+            key, value = "ssl", mode
         if key:
             params.append(f"{key}={value}" if sep else key)
     return f"{base}?{'&'.join(params)}" if params else base

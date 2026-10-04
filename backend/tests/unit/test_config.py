@@ -23,3 +23,16 @@ def test_asyncpg_urls_are_left_alone():
     url = "postgresql+asyncpg://u:p@localhost:5432/bibby"
     assert normalize_database_url(url) == url
     assert normalize_database_url(url + "?ssl=require") == url + "?ssl=require"
+
+
+def test_quotes_are_stripped_and_invalid_ssl_mode_fails_fast():
+    import pytest
+
+    assert normalize_database_url('"postgres://u:p@h/db?sslmode=require"') == (
+        "postgresql+asyncpg://u:p@h/db?ssl=require"
+    )
+    assert normalize_database_url("postgres://u:p@h/db?sslmode=require'") == (
+        "postgresql+asyncpg://u:p@h/db?ssl=require"
+    )
+    with pytest.raises(ValueError, match="SSL-Modus"):
+        normalize_database_url("postgres://u:p@h/db?sslmode=required")
