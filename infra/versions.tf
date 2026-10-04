@@ -3,7 +3,7 @@ terraform {
   required_providers {
     scaleway = {
       source  = "scaleway/scaleway"
-      version = "2.48.0"
+      version = "2.57.0"
     }
   }
   # State lives in an Object Storage bucket (S3 backend); bucket/key are passed via -backend-config.

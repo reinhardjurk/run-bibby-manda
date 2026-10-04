@@ -25,14 +25,38 @@ GitHub-Environments `staging` und `production` mit jeweils eigenen Secrets/Varia
 
 ## Erstinbetriebnahme
 
-1. Scaleway-Projekt, IAM-Key, State-Bucket anlegen; Environments in GitHub befüllen.
-2. Deploy ausführen; Datenbank-URL aus dem Tofu-Output (`database_endpoint`) in die Secrets
-   übernehmen und erneut deployen.
-3. Super-Admin anlegen: entweder einmalig `BIBBY_BOOTSTRAP_PLATFORM_ADMIN_EMAIL/PASSWORD` als
+1. Scaleway-Projekt, IAM-Key (Registry, Container, SDB, Object Storage, TEM), State-Bucket und
+   Registry-Namespace anlegen; Mail-Domain in Transactional Email verifizieren.
+2. **Datenbank einmalig lokal anlegen** – der Deploy-Workflow führt Migrationen vor `tofu apply`
+   aus, die Datenbank muss also vorher existieren. Alle Variablen außer `environment` haben
+   Platzhalter-Defaults, die der Workflow später überschreibt:
+
+   ```bash
+   cd infra
+   export SCW_ACCESS_KEY=… SCW_SECRET_KEY=… SCW_DEFAULT_PROJECT_ID=… SCW_DEFAULT_ORGANIZATION_ID=…
+   export AWS_ACCESS_KEY_ID=$SCW_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$SCW_SECRET_KEY   # S3-State-Backend
+   tofu init -backend-config="bucket=<state-bucket>" -backend-config="key=bibby/production.tfstate"
+   tofu apply -var environment=production \
+     -target=scaleway_sdb_sql_database.bibby -target=scaleway_object_bucket.finish_photos
+   tofu output -raw database_endpoint
+   ```
+
+   `tofu output -raw database_endpoint` liefert `postgres://<host>:5432/<dbname>?sslmode=require`.
+   Serverless SQL authentifiziert mit IAM: Benutzername = **ID der IAM-Applikation bzw. des
+   IAM-Users**, dem der API-Key gehört (UUID, nicht der Access-Key), Passwort = Secret-Key.
+   Daraus wird die URL für beide DB-Secrets (asyncpg erwartet `ssl=require` statt `sslmode`):
+   `postgresql+asyncpg://<IAM-PRINCIPAL-ID>:<SECRET_KEY>@<host>:5432/<dbname>?ssl=require`.
+   Eigene PostgreSQL-Rollen sind dort nicht möglich, die RLS-Policies bleiben deshalb inaktiv
+   (primäre Verteidigung ist die getestete Scoping-Schicht).
+3. Environments in GitHub befüllen (Tabelle oben) und den Deploy-Workflow ausführen. Beim
+   ersten Lauf schlägt nur der abschließende Smoke-Test fehl, weil `PUBLIC_BASE_URL` noch nicht
+   die Container-Domain ist: Domain aus dem Tofu-Output `container_url` übernehmen, Variable
+   setzen, erneut deployen.
+4. Super-Admin anlegen: entweder einmalig `BIBBY_BOOTSTRAP_PLATFORM_ADMIN_EMAIL/PASSWORD` als
    Container-Secrets setzen (Bootstrap beim Start, idempotent) oder
    `python -m app.cli create-platform-admin` in einer Container-Shell ausführen. Danach die
    Bootstrap-Variablen wieder entfernen.
-4. Unter `/platform` die erste Organisation samt Org-Admin anlegen.
+5. Unter `/platform` die erste Organisation samt Org-Admin anlegen.
 
 ## Datenbankrollen (RLS)
 
