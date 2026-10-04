@@ -4,8 +4,34 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def normalize_database_url(url: str) -> str:
+    """Accepts the URL forms cloud consoles print and maps them to the asyncpg dialect.
+
+    * surrounding whitespace / newlines (pasted secrets) are removed
+    * `postgres://` and `postgresql://` → `postgresql+asyncpg://`
+    * libpq `sslmode=<mode>` → asyncpg `ssl=<mode>` (value trimmed and lower-cased)
+    """
+    url = url.strip()
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            url = "postgresql+asyncpg://" + url[len(prefix) :]
+            break
+    if "?" not in url:
+        return url
+    base, _, query = url.partition("?")
+    params: list[str] = []
+    for part in query.split("&"):
+        key, sep, value = part.partition("=")
+        key, value = key.strip(), value.strip()
+        if key.lower() == "sslmode":
+            key, value = "ssl", value.lower()
+        if key:
+            params.append(f"{key}={value}" if sep else key)
+    return f"{base}?{'&'.join(params)}" if params else base
 
 
 class Settings(BaseSettings):
@@ -60,6 +86,11 @@ class Settings(BaseSettings):
     # Platform bootstrap: creates the first super admin on startup if no platform admin exists.
     bootstrap_platform_admin_email: str = ""
     bootstrap_platform_admin_password: str = ""
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_db_url(cls, v: str) -> str:
+        return normalize_database_url(v)
 
 
 @lru_cache
