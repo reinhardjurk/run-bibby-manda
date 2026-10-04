@@ -26,10 +26,21 @@ resource "scaleway_object_bucket_acl" "sponsor_logos" {
   acl    = "public-read"
 }
 
+# Transactional e-mail sending domain – independent of the app host. Only managed when set;
+# DNS records (SPF/DKIM/DMARC/MX) must be published for the domain to become valid.
 resource "scaleway_tem_domain" "mail" {
-  count      = var.environment == "production" ? 1 : 0
-  name       = replace(replace(var.public_base_url, "https://", ""), "/", "")
+  count      = var.mail_domain != "" ? 1 : 0
+  name       = var.mail_domain
   accept_tos = true
+}
+
+output "mail_domain_dns" {
+  description = "DNS records to publish for the transactional e-mail domain"
+  value = var.mail_domain != "" ? {
+    spf   = scaleway_tem_domain.mail[0].spf_config
+    dkim  = scaleway_tem_domain.mail[0].dkim_config
+    dmarc = { name = scaleway_tem_domain.mail[0].dmarc_name, value = scaleway_tem_domain.mail[0].dmarc_config }
+  } : null
 }
 
 resource "scaleway_container" "app" {

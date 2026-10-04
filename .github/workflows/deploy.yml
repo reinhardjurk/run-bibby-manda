@@ -101,6 +101,8 @@ jobs:
       TF_VAR_mail_api_key: ${{ secrets.BIBBY_MAIL_API_KEY }}
       TF_VAR_mail_project_id: ${{ vars.SCW_PROJECT_ID }}
       TF_VAR_public_base_url: ${{ vars.PUBLIC_BASE_URL }}
+      TF_VAR_mail_domain: ${{ vars.MAIL_DOMAIN }}
+      TF_VAR_mail_sender: ${{ vars.MAIL_SENDER || 'noreply@example.org' }}
       TF_VAR_environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v4

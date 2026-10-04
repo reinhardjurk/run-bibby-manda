@@ -51,6 +51,12 @@ variable "mail_project_id" {
   default = ""
 }
 
+variable "mail_domain" {
+  type        = string
+  description = "Sending domain to register in Transactional Email (e.g. example.org). Empty = do not manage a TEM domain."
+  default     = ""
+}
+
 variable "mail_sender" {
   type    = string
   default = "noreply@example.org"
