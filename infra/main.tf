@@ -3,6 +3,13 @@
 resource "scaleway_container_namespace" "bibby" {
   name        = "bibby-${var.environment}"
   description = "Bibby Multi-Org (${var.environment})"
+
+  # The API reports activate_vpc_integration = true for new namespaces while the provider
+  # default is false; the attribute forces replacement, which would recreate the namespace
+  # (and change the container hostname) on every apply. Never let it drive a replacement.
+  lifecycle {
+    ignore_changes = [activate_vpc_integration]
+  }
 }
 
 resource "scaleway_sdb_sql_database" "bibby" {
@@ -83,6 +90,11 @@ resource "scaleway_container" "app" {
     }
     interval          = "30s"
     failure_threshold = 3
+  }
+
+  lifecycle {
+    # Scaleway fills in a default scaling_option; keep the plan clean instead of resetting it.
+    ignore_changes = [scaling_option]
   }
 }
 
