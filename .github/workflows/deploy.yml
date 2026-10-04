@@ -106,6 +106,9 @@ jobs:
       SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
       SCW_DEFAULT_PROJECT_ID: ${{ vars.SCW_PROJECT_ID }}
       SCW_DEFAULT_ORGANIZATION_ID: ${{ vars.SCW_ORGANIZATION_ID }}
+      # OpenTofu's S3 state backend reads AWS-style credentials (Scaleway Object Storage is S3-compatible)
+      AWS_ACCESS_KEY_ID: ${{ secrets.SCW_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
       TF_VAR_container_image: ${{ needs.build-push.outputs.image }}
       TF_VAR_app_secret: ${{ secrets.BIBBY_APP_SECRET }}
       TF_VAR_field_encryption_key: ${{ secrets.BIBBY_FIELD_ENCRYPTION_KEY }}
