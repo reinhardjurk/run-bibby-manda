@@ -2,7 +2,8 @@
 
 Resources: container namespace + serverless container (backend incl. built SPA), serverless SQL
 database (PostgreSQL), object storage buckets (finish photos without public listing, sponsor
-logos public-read) and a transactional e-mail domain.
+logos public-read) and, when `mail_domain` is set, a transactional e-mail domain (its DNS records
+appear in the output `mail_domain_dns`).
 
 Applied exclusively by the manual `Deploy` GitHub workflow after a green CI run. State is stored in
 an Object Storage bucket (`-backend-config`). All secrets are injected via `TF_VAR_*` from GitHub
