@@ -12,7 +12,7 @@ GitHub-Environments `staging` und `production` mit jeweils eigenen Secrets/Varia
 | Secret | `BIBBY_APP_SECRET`, `BIBBY_FIELD_ENCRYPTION_KEY`, `BIBBY_MAIL_API_KEY` | siehe Runbook |
 | Variable | `SCW_REGISTRY`, `SCW_NAMESPACE`, `SCW_PROJECT_ID`, `SCW_ORGANIZATION_ID`, `TF_STATE_BUCKET` | unkritische Konfiguration |
 | Variable | `PUBLIC_BASE_URL` | `https://<host>` ohne Pfad – zuerst Platzhalter, nach dem ersten Apply die Container-Domain bzw. eigene Domain |
-| Variable | `MAIL_DOMAIN`, `MAIL_SENDER` | Versanddomain für Transactional Email (z. B. `example.org`) und Absenderadresse; leer = keine TEM-Domain per Tofu verwalten |
+| Variable | `MAIL_DOMAIN`, `MAIL_SENDER`, `MAIL_TEST_RECIPIENT` | Versanddomain für Transactional Email (z. B. `example.org`), Absenderadresse und die Adresse, an die der Mailmodus `test` alle Mails umleitet; `MAIL_DOMAIN` leer = keine TEM-Domain per Tofu verwalten |
 
 ## Ablauf (`.github/workflows/deploy.yml`, manuell)
 
