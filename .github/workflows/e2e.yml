@@ -1,0 +1,58 @@
+name: E2E tests
+
+# Runs the end-to-end suite (backend/tools/e2e) against a deployed instance.
+# Manual only: the suite creates and deletes data in the configured organization.
+#
+# Secrets (repository → Settings → Secrets → Actions):
+#   E2E_EMAIL / E2E_PASSWORD                    org admin of the test organization
+#   E2E_PLATFORM_EMAIL / E2E_PLATFORM_PASSWORD  optional super admin (platform tests)
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Base URL of the instance (e.g. https://www.run-bibby.eu)"
+        required: true
+      slug:
+        description: "Slug of the test organization"
+        required: true
+      second_slug:
+        description: "Slug of a second organization for isolation tests (optional)"
+        required: false
+        default: ""
+      pytest_args:
+        description: "Extra pytest arguments (e.g. -k timing)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: E2E against ${{ inputs.base_url }} (${{ inputs.slug }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.8.17"
+      - run: uv sync --frozen --extra dev
+      - name: Run E2E suite
+        env:
+          BIBBY_E2E_BASE_URL: ${{ inputs.base_url }}
+          BIBBY_E2E_SLUG: ${{ inputs.slug }}
+          BIBBY_E2E_SECOND_SLUG: ${{ inputs.second_slug }}
+          BIBBY_E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          BIBBY_E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          BIBBY_E2E_PLATFORM_EMAIL: ${{ secrets.E2E_PLATFORM_EMAIL }}
+          BIBBY_E2E_PLATFORM_PASSWORD: ${{ secrets.E2E_PLATFORM_PASSWORD }}
+        run: uv run pytest tools/e2e -p no:cacheprovider -ra --junitxml=e2e-report.xml ${{ inputs.pytest_args }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-report
+          path: backend/e2e-report.xml

@@ -272,3 +272,36 @@ async def test_online_payment_flow(client):
     )
     r = await client.post(f"/api/public/{org.slug}/manage/checkout", params={"token": token})
     assert r.json()["status"] == "paid"
+
+
+async def test_delete_event_with_registrations_cascades(client):
+    """Deleting a whole event removes its registrations, bibs, payments and timing records –
+    even though a single competition under running registrations is protected (RESTRICT)."""
+    org = await create_org("loeschtest")
+    s = await login(client, "loeschtest")
+    ev, comps = await setup_event(s)
+    r = await client.post(
+        f"/api/public/{org.slug}/registrations",
+        json=registration_payload(
+            ev["id"], comps[0]["id"], payment_method="sepa_debit", iban=VALID_IBAN
+        ),
+    )
+    assert r.status_code == 201, r.text
+    r = await s.post(
+        "/api/loeschtest/team/timing/records/manual",
+        json={
+            "event_id": ev["id"],
+            "bib_number": 1,
+            "absolute_time": datetime.now(UTC).isoformat(),
+        },
+    )
+    assert r.status_code == 201, r.text
+    # a competition with registrations cannot be deleted on its own
+    r = await s.delete(f"/api/loeschtest/team/events/{ev['id']}/competitions/{comps[0]['id']}")
+    assert r.status_code in (400, 409), r.text
+    # ... but the event as a whole can
+    r = await s.delete(f"/api/loeschtest/team/events/{ev['id']}")
+    assert r.status_code == 204, r.text
+    assert (await s.get(f"/api/loeschtest/team/events/{ev['id']}")).status_code == 404
+    r = await s.get("/api/loeschtest/team/registrations", params={"event_id": ev["id"]})
+    assert r.status_code == 404

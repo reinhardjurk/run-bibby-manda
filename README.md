@@ -63,6 +63,15 @@ uv run pytest -q                           # Unit + API + Isolationstests (Testd
 cd ../frontend && npm run typecheck && npm run lint && npm run build
 ```
 
+End-to-End gegen eine laufende Instanz und eine konfigurierbare Organisation
+(`backend/tools/e2e`, Konzept in [docs/TESTKONZEPT.md](docs/TESTKONZEPT.md)):
+
+```bash
+cd backend
+BIBBY_E2E_BASE_URL=https://www.run-bibby.eu BIBBY_E2E_SLUG=testverein \
+BIBBY_E2E_EMAIL=admin@testverein.de BIBBY_E2E_PASSWORD=… tools/e2e/run.sh
+```
+
 Die CI-Pipeline (`.github/workflows/ci.yml`) führt auf jedem Push Secret-Scan (gitleaks), Lint,
 Typprüfung (mypy/tsc), Tests und den Frontend-/Container-Build aus. Deploys erfolgen nur manuell
 aus einer grünen Pipeline (`deploy.yml`). Lokal: `pre-commit install` aktiviert gitleaks, ruff und
@@ -75,3 +84,4 @@ die Standard-Hooks.
 - [docs/DEPLOY.md](docs/DEPLOY.md) – Umgebungen, Secrets, Migrationen, Deploy
 - [docs/LOADTEST.md](docs/LOADTEST.md) – Lasttests und Aufräumen
 - [docs/FINISH_PHOTOS.md](docs/FINISH_PHOTOS.md) – Zielfoto-Werkzeug
+- [docs/TESTKONZEPT.md](docs/TESTKONZEPT.md) – Testebenen, Bereichsabdeckung, E2E-Suite und Abnahme
