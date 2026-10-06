@@ -11,6 +11,7 @@ import { useToast } from '../../../hooks/useToast';
 
 const TEXT_KEYS = [
   'mail_sender_name',
+  'mail_sender_local_part',
   'mail_reply_to',
   'mail_subject_de',
   'mail_subject_en',
@@ -40,6 +41,7 @@ export function SettingsSection({ slug, isAdmin, onSaved }: { slug: string; isAd
   const toast = useToast();
   const view = useAsync(() => settingsApi.get(slug), [slug]);
   const [form, setForm] = useState<Form | null>(null);
+  const senderDomain = typeof view.data?.['mail_sender_domain'] === 'string' ? view.data['mail_sender_domain'] : '';
   const [busy, setBusy] = useState(false);
   const [confirmLive, setConfirmLive] = useState(false);
   const [logoTick, setLogoTick] = useState(0);
@@ -143,6 +145,23 @@ export function SettingsSection({ slug, isAdmin, onSaved }: { slug: string; isAd
         </Field>
         <div className="grid grid--2">
           <Field label="Absendername">{(id) => <input id={id} value={form.mail_sender_name} onChange={(e) => set('mail_sender_name', e.target.value)} />}</Field>
+          <Field
+            label="Absenderadresse (No-Reply)"
+            hint={`Die Domain ist fest. Leer = noreply-${slug}@${senderDomain}. Antworten an diese Adresse werden nicht zugestellt – nennen Sie im Mailtext eine Kontaktadresse.`}
+          >
+            {(id) => (
+              <div className="input-suffix">
+                <input
+                  id={id}
+                  value={form.mail_sender_local_part}
+                  placeholder={`noreply-${slug}`}
+                  disabled={!isAdmin}
+                  onChange={(e) => set('mail_sender_local_part', e.target.value)}
+                />
+                <span>@{senderDomain}</span>
+              </div>
+            )}
+          </Field>
           <Field label="Antwort-an (Reply-To)">
             {(id) => <input id={id} type="email" value={form.mail_reply_to} onChange={(e) => set('mail_reply_to', e.target.value)} />}
           </Field>
