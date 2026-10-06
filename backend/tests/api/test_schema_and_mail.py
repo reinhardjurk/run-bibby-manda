@@ -98,3 +98,47 @@ async def test_mail_mode_switching_rules(client, mails):
         and False
         or mails.sent[0].to.endswith("@example.org")
     )
+
+
+async def test_per_org_sender_address(client, mails):
+    from tests.conftest import add_user
+
+    org = await create_org("sender")
+    s = await login(client, "sender")
+    view = (await s.get("/api/sender/team/settings")).json()
+    assert view["mail_sender_domain"] == "example.org"
+    assert view["mail_sender_address"] == "noreply-sender@example.org"
+
+    # invalid local parts are rejected with a readable message; full addresses too
+    r = await s.put("/api/sender/team/settings", json={"values": {"mail_sender_local_part": "a b"}})
+    assert r.status_code == 400
+    r = await s.put(
+        "/api/sender/team/settings", json={"values": {"mail_sender_local_part": "x@y.de"}}
+    )
+    assert r.status_code == 400 and "Domain ist fest" in r.json()["detail"]
+    r = await s.put(
+        "/api/sender/team/settings", json={"values": {"mail_sender_local_part": "Anmeldung-TSV"}}
+    )
+    assert r.status_code == 200 and r.json()["mail_sender_address"] == "anmeldung-tsv@example.org"
+
+    # only org admins may change it
+    await add_user(org, "office@example.org", ("race_office",))
+    office = await login(client, "sender", "office@example.org")
+    r = await office.put(
+        "/api/sender/team/settings", json={"values": {"mail_sender_local_part": "hack"}}
+    )
+    assert r.status_code == 403
+
+    # the confirmation mail is sent from the organization's address, without Reply-To
+    await s.put(
+        "/api/sender/team/settings",
+        json={"values": {"mail_mode": "live"}, "confirm_live_mail": True},
+    )
+    ev, comps = await setup_event(s)
+    r = await client.post(
+        "/api/public/sender/registrations", json=registration_payload(ev["id"], comps[0]["id"])
+    )
+    assert r.status_code == 201
+    assert len(mails.sent) == 1
+    assert mails.sent[0].from_address == "anmeldung-tsv@example.org"
+    assert mails.sent[0].reply_to == ""

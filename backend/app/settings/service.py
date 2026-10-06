@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.core.security import decrypt_field, encrypt_field
 from app.db.models import OrgSetting
 
 DEFAULTS: dict[str, str] = {
     "mail_mode": "off",  # live | test | off
     "mail_sender_name": "",
+    "mail_sender_local_part": "",  # local part of the sender; empty = noreply-<slug>
     "mail_reply_to": "",
     "mail_subject_de": "Ihre Anmeldung – Verwaltungslink",
     "mail_subject_en": "Your registration – management link",
@@ -39,7 +42,37 @@ DEFAULTS: dict[str, str] = {
 
 SECRET_KEYS = {"sumup_api_key"}
 PUBLIC_KEYS = {"sponsor_mode", "sponsor_marquee_seconds", "sponsor_tier_weights"}
-ADMIN_ONLY_KEYS = {"mail_mode", "sumup_api_key", "sumup_merchant_code"}
+ADMIN_ONLY_KEYS = {"mail_mode", "mail_sender_local_part", "sumup_api_key", "sumup_merchant_code"}
+
+LOCAL_PART_RE = re.compile(r"^[a-z0-9](?:[a-z0-9._+-]{0,62}[a-z0-9])?$")
+
+
+def sender_domain() -> str:
+    """The platform's fixed sending domain (domain part of BIBBY_MAIL_DEFAULT_SENDER)."""
+    return get_settings().mail_default_sender.rsplit("@", 1)[-1]
+
+
+def normalize_local_part(value: str) -> str:
+    """Validates an organization's sender local part; raises ValueError with a German message."""
+    local = value.strip().lower()
+    if not local:
+        return ""
+    if "@" in local:
+        raise ValueError(
+            f"Bitte nur den Teil vor dem @ eingeben – die Domain ist fest @{sender_domain()}."
+        )
+    if not LOCAL_PART_RE.match(local):
+        raise ValueError(
+            "Absenderadresse: nur Kleinbuchstaben, Ziffern sowie . _ + - sind erlaubt "
+            "(max. 64 Zeichen, nicht mit . oder - beginnen/enden)."
+        )
+    return local
+
+
+def sender_address(values: dict[str, str], slug: str) -> str:
+    """Organization-specific no-reply sender on the fixed platform domain."""
+    local = values.get("mail_sender_local_part", "") or f"noreply-{slug}"
+    return f"{local}@{sender_domain()}"
 
 
 async def get_all(db: AsyncSession, organization_id: uuid.UUID) -> dict[str, str]:

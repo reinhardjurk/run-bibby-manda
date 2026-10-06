@@ -11,8 +11,10 @@ import uuid
 from dataclasses import dataclass
 
 import httpx
+from sqlalchemy import select
 
 from app.config import get_settings
+from app.db.models import Organization
 from app.db.session import get_sessionmaker
 from app.settings import service as settings_service
 
@@ -26,6 +28,7 @@ class OutgoingMail:
     text: str
     sender_name: str = ""
     reply_to: str = ""
+    from_address: str = ""  # empty = platform default sender
 
 
 class MailSender:
@@ -37,7 +40,10 @@ class MailSender:
             log.warning("mail not configured – skipping mail to %s", mail.to)
             return
         payload = {
-            "from": {"email": s.mail_default_sender, "name": mail.sender_name or "Bibby"},
+            "from": {
+                "email": mail.from_address or s.mail_default_sender,
+                "name": mail.sender_name or "Bibby",
+            },
             "to": [{"email": mail.to}],
             "subject": mail.subject,
             "text": mail.text,
@@ -74,6 +80,11 @@ async def send_confirmation_mail(
     try:
         async with get_sessionmaker()() as db:
             values = await settings_service.get_all(db, organization_id)
+            slug = (
+                await db.execute(
+                    select(Organization.slug).where(Organization.id == organization_id)
+                )
+            ).scalar_one()
         mode = values.get("mail_mode", "off")
         if mode == "off":
             log.info("mail mode off – not sending confirmation to %s", to)
@@ -89,6 +100,7 @@ async def send_confirmation_mail(
                 text=body,
                 sender_name=values.get("mail_sender_name", ""),
                 reply_to=values.get("mail_reply_to", ""),
+                from_address=settings_service.sender_address(values, slug),
             )
         )
     except (httpx.HTTPError, OSError) as exc:

@@ -24,13 +24,20 @@ class SettingsUpdate(BaseModel):
     confirm_live_mail: bool = False
 
 
+def _view(values: dict[str, str], slug: str) -> dict:
+    out = service.masked_view(values)
+    out["mail_sender_domain"] = service.sender_domain()
+    out["mail_sender_address"] = service.sender_address(values, slug)
+    return out
+
+
 @router.get("")
-async def get_settings_view(principal: Office, db: DB) -> dict:
-    return service.masked_view(await service.get_all(db, principal.organization_id))
+async def get_settings_view(principal: Office, db: DB, slug: str) -> dict:
+    return _view(await service.get_all(db, principal.organization_id), slug)
 
 
 @router.put("")
-async def update_settings(principal: Office, db: DB, data: SettingsUpdate) -> dict:
+async def update_settings(principal: Office, db: DB, slug: str, data: SettingsUpdate) -> dict:
     for key, value in data.values.items():
         if key not in DEFAULTS:
             raise BadRequest(f"Unbekannte Einstellung: {key}")
@@ -41,6 +48,11 @@ async def update_settings(principal: Office, db: DB, data: SettingsUpdate) -> di
                 raise BadRequest("Mailmodus muss live, test oder off sein.")
             if value == "live" and not data.confirm_live_mail:
                 raise BadRequest("Umschalten auf 'live' erfordert eine Bestätigung.")
+        if key == "mail_sender_local_part":
+            try:
+                value = service.normalize_local_part(value)
+            except ValueError as exc:
+                raise BadRequest(str(exc)) from exc
         if key == "sponsor_mode" and value not in ("rotation", "marquee"):
             raise BadRequest("Sponsorenmodus muss rotation oder marquee sein.")
         if key == "sponsor_marquee_seconds":
@@ -54,7 +66,7 @@ async def update_settings(principal: Office, db: DB, data: SettingsUpdate) -> di
             continue  # empty secret in the form = keep existing value
         await service.set_value(db, principal.organization_id, key, value)
     await db.commit()
-    return service.masked_view(await service.get_all(db, principal.organization_id))
+    return _view(await service.get_all(db, principal.organization_id), slug)
 
 
 @router.delete("/secret/{key}")

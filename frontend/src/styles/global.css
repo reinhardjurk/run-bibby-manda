@@ -1199,3 +1199,18 @@ details.panel > .panel__body {
     display: none !important;
   }
 }
+
+/* input with a fixed suffix (e.g. a sender address whose domain cannot change) */
+.input-suffix {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.input-suffix input {
+  flex: 1;
+  min-width: 0;
+}
+.input-suffix span {
+  white-space: nowrap;
+  color: var(--muted, #555);
+}

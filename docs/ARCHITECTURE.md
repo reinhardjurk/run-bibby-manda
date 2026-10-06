@@ -91,6 +91,15 @@ Checkout. In Tests/Lasttests ersetzt `BIBBY_PAYMENT_PROVIDER=fake` den Anbieter.
   Event-Loop.
 * Zielfotos: Ordner = `HMAC-SHA256(seed, startnummer)[:40]`; der Seed verlässt den Server nie.
 
+## E-Mail-Absender
+
+Die Versanddomain ist plattformweit fest (Domain-Teil von `BIBBY_MAIL_DEFAULT_SENDER`, in
+Transactional Email registriert). Jede Organisation hat eine eigene No-Reply-Adresse darauf:
+Standard `noreply-<slug>@<domain>`, der lokale Teil ist pro Organisation durch Org-Admins
+änderbar (`mail_sender_local_part`, serverseitig validiert, nie mit fremder Domain). Antworten an
+diese Adresse werden nicht zugestellt; eine Kontaktadresse gehört in den Mailtext, optional kann
+ein Reply-To gesetzt werden.
+
 ## Schema & Migrationen
 
 Einzige Quelle der Wahrheit: `backend/alembic/versions`. `0001` legt alle Tabellen mit
