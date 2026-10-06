@@ -7,6 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError
 
 from app.core.deps import DB, Principal, require_roles
@@ -105,6 +106,10 @@ async def update_user(principal: Admin, db: DB, user_id: str, data: UserUpdate) 
         roles = _validate_roles(data.roles)
         if is_self and "admin" not in roles:
             raise BadRequest("Sie können sich die Admin-Rolle nicht selbst entziehen.")
+        # Remove the old role rows first: the unit of work would otherwise INSERT the new rows
+        # before DELETING the old ones and trip over uq_user_role for every role that is kept.
+        await db.execute(delete(UserRole).where(UserRole.user_id == user.id))
+        await db.flush()
         user.roles = [UserRole(organization_id=principal.organization_id, role=r) for r in roles]
     await db.commit()
     await db.refresh(user)

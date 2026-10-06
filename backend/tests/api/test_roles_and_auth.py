@@ -205,3 +205,20 @@ async def test_error_middleware_adds_cors_headers_on_500(monkeypatch):
     assert r.status_code == 500
     assert r.headers.get("access-control-allow-origin") == "http://localhost:5173"
     assert r.json() == {"detail": "Interner Fehler."}
+
+
+async def test_role_update_keeps_existing_role(client):
+    """Replacing a user's roles with a set that still contains an existing role must not trip
+    over the (user_id, role) unique constraint."""
+    org = await create_org("rollen")
+    user = await add_user(org, "timer@rollen.de", ("timing",))
+    s = await login(client, "rollen")
+    r = await s.patch(
+        f"/api/rollen/team/users/{user.id}", json={"roles": ["timing", "race_office"]}
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["roles"] == ["race_office", "timing"]
+    r = await s.patch(f"/api/rollen/team/users/{user.id}", json={"roles": ["viewer"]})
+    assert r.status_code == 200 and r.json()["roles"] == ["viewer"]
+    r = await s.patch(f"/api/rollen/team/users/{user.id}", json={"roles": []})
+    assert r.status_code == 200 and r.json()["roles"] == []

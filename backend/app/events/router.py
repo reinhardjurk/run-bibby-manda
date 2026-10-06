@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Response, UploadFile
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from app.core.deps import DB, Principal, require_roles
 from app.core.errors import BadRequest
@@ -142,6 +142,15 @@ async def update_event(principal: Office, db: DB, event_id: str, data: EventUpda
 async def delete_event(principal: Admin, db: DB, event_id: str) -> None:
     event = await get_tenant_or_404(
         db, Event, principal.organization_id, event_id, "Veranstaltung nicht gefunden."
+    )
+    # Registrations reference competitions with ON DELETE RESTRICT (a single competition can
+    # never be removed under running registrations). Deleting a whole event is allowed, so the
+    # registrations (with bibs and payments, DB cascade) go first, then the event itself.
+    await db.execute(
+        delete(Registration).where(
+            Registration.event_id == event.id,
+            Registration.organization_id == principal.organization_id,
+        )
     )
     await db.delete(event)
     await db.commit()
