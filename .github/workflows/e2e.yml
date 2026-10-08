@@ -4,8 +4,9 @@ name: E2E tests
 # Manual only: the suite creates and deletes data in the configured organization.
 #
 # Secrets (repository → Settings → Secrets → Actions):
-#   E2E_EMAIL / E2E_PASSWORD                    org admin of the test organization
-#   E2E_PLATFORM_EMAIL / E2E_PLATFORM_PASSWORD  optional super admin (platform tests)
+#   E2E_EMAIL / E2E_PASSWORD                    org admin of the test organization (created by
+#                                               the bootstrap step when missing)
+#   E2E_PLATFORM_EMAIL / E2E_PLATFORM_PASSWORD  super admin (bootstrap + platform tests)
 on:
   workflow_dispatch:
     inputs:
@@ -15,10 +16,15 @@ on:
       slug:
         description: "Slug of the test organization"
         required: true
+        default: "testverein"
       second_slug:
         description: "Slug of a second organization for isolation tests (optional)"
         required: false
-        default: ""
+        default: "testverein-2"
+      bootstrap:
+        description: "Create or repair the test organization(s) first (needs the platform secrets)"
+        type: boolean
+        default: true
       pytest_args:
         description: "Extra pytest arguments (e.g. -k timing)"
         required: false
@@ -41,6 +47,17 @@ jobs:
         with:
           version: "0.8.17"
       - run: uv sync --frozen --extra dev
+      - name: Create or repair the test organization
+        if: ${{ inputs.bootstrap }}
+        env:
+          BIBBY_E2E_BASE_URL: ${{ inputs.base_url }}
+          BIBBY_E2E_SLUG: ${{ inputs.slug }}
+          BIBBY_E2E_SECOND_SLUG: ${{ inputs.second_slug }}
+          BIBBY_E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          BIBBY_E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          BIBBY_E2E_PLATFORM_EMAIL: ${{ secrets.E2E_PLATFORM_EMAIL }}
+          BIBBY_E2E_PLATFORM_PASSWORD: ${{ secrets.E2E_PLATFORM_PASSWORD }}
+        run: uv run python -m tools.e2e.bootstrap
       - name: Run E2E suite
         env:
           BIBBY_E2E_BASE_URL: ${{ inputs.base_url }}

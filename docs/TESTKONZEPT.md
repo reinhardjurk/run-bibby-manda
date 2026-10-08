@@ -69,8 +69,12 @@ Die Organisation, gegen die getestet wird, ist vollständig über Umgebungsvaria
 | `BIBBY_E2E_SECOND_SLUG` | nein | eine zweite (beliebige, aktive) Organisation für die Cross-Org-Isolationstests |
 | `BIBBY_E2E_RATELIMIT=1` | nein | führt zusätzlich den Login-Rate-Limit-Test aus; er verbraucht das Login-Kontingent der eigenen IP (20 Versuche je 5 Minuten), ein direkt folgender Lauf schlägt daher bis zu 5 Minuten lang mit 429 fehl |
 
-Empfehlung: Für Produktion eine eigene Organisation (z. B. `testverein`) über die
-Plattform-Verwaltung anlegen und ausschließlich dafür verwenden. Die Suite legt in der
+Empfehlung: Für Produktion eine eigene Organisation (z. B. `testverein`) ausschließlich für die
+Tests verwenden. `python -m tools.e2e.bootstrap` (bzw. `BIBBY_E2E_BOOTSTRAP=1 tools/e2e/run.sh`)
+legt sie mit dem Super-Admin-Zugang idempotent an: fehlende Organisation und Org-Admin werden
+erstellt, eine gesperrte Organisation reaktiviert, das Admin-Passwort auf `BIBBY_E2E_PASSWORD`
+gesetzt; ist `BIBBY_E2E_SECOND_SLUG` gesetzt, entsteht auch die zweite (leere) Organisation.
+Der GitHub-Workflow führt diesen Schritt standardmäßig vor der Suite aus. Die Suite legt in der
 konfigurierten Organisation Events, Anmeldungen, Geräte, Benutzer und Sponsoren an.
 
 ### 4.2 Testdaten, Markierung und Aufräumen
